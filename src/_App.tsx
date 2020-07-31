@@ -8,14 +8,17 @@ const initialState = {
     fieldPos: 0,
     score: [0, 0],
     time: 0,
-    timerRunning: false
+    timerRunning: false,
+    curTime: null
 };
+let simulatedGame = null;
 let apm = 1;
 let history = [];
 let timeout = null;
-const loopTime = 0;
+const loopTime = 100;
 const maxTime = 90;
 const maxPos = 7;
+let horas = null;
 
 
 export default class App extends Component {
@@ -27,58 +30,45 @@ export default class App extends Component {
 
     componentDidMount() {
         console.log("componentDidMount");
+        horas = setInterval(() => {
+            this.setState({
+                curTime: new Date().toLocaleString()
+            })
+        }, 1000)
     }
     componentWillUnmount() {
         console.log("componentWillUnmount");
         clearTimeout(timeout);
+        clearInterval(horas);
     }
-    coinToss() {
-        let { fieldPos, score } = this.state;
-        const rnd = Math.random() > 0.5 ? +1 : -1;
-        let newPos = fieldPos + rnd;
-        if (newPos > maxPos) {
-            this.setState({
-                fieldPos: 0,
-                score: [score[0], score[1] + 1]
-            });
-        } else if (newPos < maxPos * -1) {
-            this.setState({
-                fieldPos: 0,
-                score: [score[0] + 1, score[1]]
-            });
-        } else {
-            this.setState({
-                fieldPos: newPos
-            });
-        }
-
-    }
-    actionTime() {
-        let { time, timerRunning, score } = this.state;
+    actionTime(time = 0) {
         const _self = this;
-        let newTime = time + 1;
-        console.log("newTime: ", newTime);
-        this.setState({
-            time: newTime
-        });
-        for (let i = 0; i < apm; i++) {
-            this.coinToss();
-        }
-
         timeout = setTimeout(function () {
-            if (newTime < maxTime && timerRunning) {
-                _self.actionTime();
+            if (time < simulatedGame.matchHistory.length) {
+                _self.setState({
+                    fieldPos: simulatedGame.matchHistory[time].ballPos,
+                    time: time,
+                    score: simulatedGame.matchHistory[time].score
+                });
+                time++;
+                _self.actionTime(time);
             } else {
-                history.push(score);
-                _self.startTimer();
+                history.push(simulatedGame.score);
+                clearTimeout(timeout);
+                //_self.startTimer();
             }
         }, loopTime);
     }
     startTimer() {
+        console.log("START");
         this.reset();
-        this.setState({
-            timerRunning: true
-        }, () => this.actionTime());
+
+        simulatedGame = new Simulator().simulate();
+        console.log("simulatedGame: ", simulatedGame);
+
+        //this.setState({
+        //    timerRunning: true
+        //}, () => this.actionTime());
 
     }
     pauseTimer() {
@@ -104,14 +94,14 @@ export default class App extends Component {
         }
         return (content);
     }
-    Simulate() {
-        const game = new Simulator();
-        console.log("game: ", game.simulate());
-    }
+
+
+
     render() {
-        const { fieldPos, score, time } = this.state;
+        const { fieldPos, score, time, curTime } = this.state;
         return (
             <View style={styles.container}>
+                <Text>{curTime}</Text>
                 <View style={styles.score}>
                     <Text>{score[0]} - {score[1]}</Text>
                 </View>
@@ -135,9 +125,6 @@ export default class App extends Component {
                     {this.renderHistory()}
                 </ScrollView>
 
-                <TouchableOpacity onPress={() => { this.Simulate() }}>
-                    <Text style={styles.btn}>Simulate</Text>
-                </TouchableOpacity>
                 <StatusBar style="auto" />
             </View>
         );

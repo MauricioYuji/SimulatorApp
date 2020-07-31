@@ -1,24 +1,25 @@
-import { StatusBar } from 'expo-status-bar';
+﻿import { StatusBar } from 'expo-status-bar';
 import React, { Component } from 'react';
-import { Text, View, TouchableOpacity, ScrollView } from 'react-native';
+import { Text, View, TouchableOpacity, ScrollView, ImageBackground, Image, Button } from 'react-native';
 import styles from './styles/base.style';
 import Simulator from './Simulator';
+import { AppLoading, SplashScreen, Linking } from 'expo';
+import { Asset } from 'expo-asset';
+import * as Font from 'expo-font';
+import 'react-native-gesture-handler';
+import { NavigationContainer } from '@react-navigation/native';
+import { createStackNavigator } from '@react-navigation/stack';
+import { navigationRef, isMountedRef, navigationChange, navigate } from './services/navigationService';
+import Navigation from './components/navigation';
 
 const initialState = {
-    fieldPos: 0,
-    score: [0, 0],
-    time: 0,
-    timerRunning: false,
-    curTime: null
+    isLoadingComplete: false
 };
-let simulatedGame = null;
-let apm = 1;
-let history = [];
-let timeout = null;
-const loopTime = 100;
-const maxTime = 90;
-const maxPos = 7;
-let horas = null;
+
+const customFonts = {
+    'SoccerLeague': require('../assets/fonts/SoccerLeague.ttf'),
+    'Lalezar': require('../assets/fonts/Lalezar-Regular.ttf'),
+};
 
 
 export default class App extends Component {
@@ -30,102 +31,34 @@ export default class App extends Component {
 
     componentDidMount() {
         console.log("componentDidMount");
-        horas = setInterval(() => {
-            this.setState({
-                curTime: new Date().toLocaleString()
-            })
-        }, 1000)
+        this._loadFontsAsync();
+        isMountedRef.current = true;
     }
     componentWillUnmount() {
         console.log("componentWillUnmount");
-        clearTimeout(timeout);
-        clearInterval(horas);
-    }
-    actionTime(time = 0) {
-        const _self = this;
-        timeout = setTimeout(function () {
-            if (time < simulatedGame.matchHistory.length) {
-                _self.setState({
-                    fieldPos: simulatedGame.matchHistory[time].ballPos,
-                    time: time,
-                    score: simulatedGame.matchHistory[time].score
-                });
-                time++;
-                _self.actionTime(time);
-            } else {
-                history.push(simulatedGame.score);
-                clearTimeout(timeout);
-                _self.startTimer();
-            }
-        }, loopTime);
-    }
-    startTimer() {
-        this.reset();
-
-        simulatedGame = new Simulator().simulate();
-        //console.log("simulatedGame: ", simulatedGame);
-
-        this.setState({
-            timerRunning: true
-        }, () => this.actionTime());
-
-    }
-    pauseTimer() {
-        console.log("PAUSE TIMER");
-        clearTimeout(timeout);
-        this.setState({
-            timerRunning: false
-        });
-    }
-    reset() {
-        console.log("RESET");
-        clearTimeout(timeout);
-        this.setState(initialState);
-    }
-    resetHistory() {
-        console.log("resetHistory");
-        history = [];
-    }
-    renderHistory() {
-        const content = [];
-        for (let i = 0; i < history.length; i++) {
-            content.push(<Text key={i}>{history[i][0]} - {history[i][1]}</Text>);
-        }
-        return (content);
     }
 
+    async _loadFontsAsync() {
+        await Font.loadAsync(customFonts);
+        this.setState({ isLoadingComplete: true });
+    }
 
 
     render() {
-        const { fieldPos, score, time, curTime } = this.state;
-        return (
-            <View style={styles.container}>
-                <Text>{curTime}</Text>
-                <View style={styles.score}>
-                    <Text>{score[0]} - {score[1]}</Text>
-                </View>
-                <Text>Tempo: {time}</Text>
-                <Text>{fieldPos}</Text>
-                <View style={styles.btnBox}>
-                    <TouchableOpacity onPress={() => { this.startTimer() }}>
-                        <Text style={styles.btn}>START</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity onPress={() => { this.pauseTimer() }}>
-                        <Text style={styles.btn}>PAUSE</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity onPress={() => { this.reset() }}>
-                        <Text style={styles.btn}>RESET</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity onPress={() => { this.resetHistory() }}>
-                        <Text style={styles.btn}>RESET HISTORY</Text>
-                    </TouchableOpacity>
-                </View>
-                <ScrollView style={styles.historyBox}>
-                    {this.renderHistory()}
-                </ScrollView>
+        const { isLoadingComplete } = this.state;
+        if (!isLoadingComplete) {
+            return (
+                <AppLoading
+                />
+            );
 
-                <StatusBar style="auto" />
-            </View>
+        }
+        return (
+            <NavigationContainer ref={navigationRef} onStateChange={(e) => navigationChange(e)}>
+                <ImageBackground source={require('../assets/images/bg.jpg')} resizeMode="cover" style={styles.container}>
+                    <Navigation />
+                </ImageBackground>
+            </NavigationContainer>
         );
     }
 }
