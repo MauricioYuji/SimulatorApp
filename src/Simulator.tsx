@@ -1,19 +1,20 @@
 
 
-
 //GAME VARS
-const apm = 1;
+const apm = 5;
 const maxTime = 90;
 const maxPos = 7; //FIXED
 
 //GAME VALUES
 let scoreHome = 0;
 let scoreAway = 0;
-let matchHistory: Array<object> = [];
+let homeTeam = {};
+let awayTeam = {};
+let matchHistory = [];
 let currentPos = 0;
+let prevPlayer = {};
+let currentPlayer = {};
 let ballPossess = 0; //HOME = 0, AWAY = 1
-
-
 export class Calculate {
     teamStatus(jogadores) {
         const defP = jogadores.filter(p => (p.pos === "g" || p.pos === "d") && p.titular);
@@ -40,29 +41,70 @@ export class Calculate {
         return Math.ceil(overall);
     }
     calculateGameStatus(match) {
+        //console.log("match: ", match);
         const homeActions = match.filter(p => p.teamPos === 0);
         const awayActions = match.filter(p => p.teamPos === 1);
         const homeActStatus = {
-            ballPossession: ((homeActions.length / ((maxTime + 1) * apm)) * 100) + "%",
-            shots: "(" + homeActions.filter(p => p.action.acao === "chute").length + ")",
-            passes: "(" + homeActions.filter(p => p.action.acao === "passe").length + ")",
-            dribbble: "(" + homeActions.filter(p => p.action.acao === "drible").length + ")",
+            goals: homeActions.filter(p => p.goal).length,
+            ballPossession: ((homeActions.length / ((maxTime + 1) * apm)) * 100),
+            shots: homeActions.filter(p => p.action.acao === "chute").length,
+            shotsPercS: homeActions.filter(p => p.action.acao === "chute" && p.action.status).length / homeActions.filter(p => p.action.acao === "chute").length * 100,
+            passes: homeActions.filter(p => p.action.acao === "passe").length,
+            passesPercS: homeActions.filter(p => p.action.acao === "passe" && p.action.status).length / homeActions.filter(p => p.action.acao === "passe").length * 100,
+            dribbble: homeActions.filter(p => p.action.acao === "drible").length,
+            dribbblePercS: homeActions.filter(p => p.action.acao === "drible" && p.action.status).length / homeActions.filter(p => p.action.acao === "drible").length * 100,
         }
         const awayActStatus = {
-            ballPossession: ((awayActions.length / ((maxTime + 1) * apm)) * 100) + "%",
-            shots: "(" + awayActions.filter(p => p.action.acao === "chute").length + ")",
-            passes: "(" + awayActions.filter(p => p.action.acao === "passe").length + ")",
-            dribbble: "(" + awayActions.filter(p => p.action.acao === "drible").length + ")",
+            goals: awayActions.filter(p => p.goal).length,
+            ballPossession: ((awayActions.length / ((maxTime + 1) * apm)) * 100),
+            shots: awayActions.filter(p => p.action.acao === "chute").length,
+            shotsPercS: awayActions.filter(p => p.action.acao === "chute" && p.action.status).length / awayActions.filter(p => p.action.acao === "chute").length * 100,
+            passes: awayActions.filter(p => p.action.acao === "passe").length,
+            passesPercS: awayActions.filter(p => p.action.acao === "passe" && p.action.status).length / awayActions.filter(p => p.action.acao === "passe").length * 100,
+            dribbble: awayActions.filter(p => p.action.acao === "drible").length,
+            dribbblePercS: awayActions.filter(p => p.action.acao === "drible" && p.action.status).length / awayActions.filter(p => p.action.acao === "drible").length * 100,
         }
-        console.log("homeActStatus: ", homeActStatus);
-        console.log("awayActStatus: ", awayActStatus);
-        return null;
+        //console.log("homeActStatus: ", homeActStatus);
+        //console.log("awayActStatus: ", awayActStatus);
+        return {
+            homeActStatus: homeActStatus,
+            awayActStatus: awayActStatus
+        };
     }
 }
 
 export class Simulator {
     coinToss(perc) {
         return Math.random() < perc;
+    }
+    //METODO DE SORTEIO DE POSSIVEL POSIÇÃO PARA ONDE A BOLA IRÁ
+    getPossiblePos() {
+        let array = [];
+        const fator = ballPossess === 0 ? 1 : -1;
+        let basePos = currentPos * fator;
+        if (basePos === -7) {
+            array.push("g");
+        }
+        if (basePos > -7 && basePos < -1) {
+            array.push("d");
+        }
+        if (basePos > -3 && basePos < 5) {
+            array.push("m");
+        }
+        if (basePos > 3) {
+            array.push("a");
+        }
+        return array[Math.floor(Math.random() * array.length)]
+    }
+    //SORTEIO DE QUAL JOGADOR IRÁ RECEBER A BOLA
+    rndPlayerbyPos(p, pos) {
+        let pList = p.filter(p => p.pos === pos);
+
+        const index = pList.findIndex(p => p == currentPlayer);
+        if (index !== -1) {
+            pList.splice(index, 1);
+        }
+        return pList[Math.floor(Math.random() * pList.length)];
     }
     decisionMethod(data) {
         let currentTeamPos = ballPossess === 0 ? currentPos : currentPos * -1;
@@ -92,27 +134,54 @@ export class Simulator {
         }
         return resultObj;
     }
-    progressMethod(success, decision) {
+    progressMethod(decision) {
+        const pSuccess = this.coinToss(currentPlayer[decision.acao] / 100);
+        const success = this.coinToss(decision.porc);
+        //console.log("player: " + currentPlayer.nome + " " + decision.acao + " " + currentPlayer[decision.acao] + ": " + pSuccess);
+        //console.log("decision: ", decision, " - result: ", success);
         const fator = ballPossess === 0 ? 1 : -1;
-        let resultObj = null;
-        if (success) {
-            if (decision.acao === "chute") {
-                resultObj = {
-                    goal: true,
-                    pos: 0
-                }
+        let resultObj = {};
+
+
+
+
+        let pList = [];
+        let pos = this.getPossiblePos();
+
+
+        if (success && pSuccess) {
+            resultObj.pos = this.coinToss(1 / apm) ? 1 * fator : 0;
+
+
+            if ((ballPossess === 0 && decision.acao !== "chute") || (ballPossess === 1 && decision.acao === "chute")) {
+                pList = homeTeam.jogadores.filter(p => p.titular);
             } else {
-                resultObj = {
-                    goal: false,
-                    pos: 1 * fator
-                }
+                pList = awayTeam.jogadores.filter(p => p.titular);
             }
+            if (decision.acao === "chute") {
+                pos = "a";
+            }
+
         } else {
-            resultObj = {
-                goal: false,
-                pos: 0
+            resultObj.pos = 0;
+
+
+            if (ballPossess === 0) {
+                pList = awayTeam.jogadores.filter(p => p.titular);
+            } else {
+                pList = homeTeam.jogadores.filter(p => p.titular);
             }
         }
+        resultObj.goal = decision.acao === "chute" && success;
+        resultObj.result = success;
+
+
+        prevPlayer = currentPlayer;
+
+        const player = this.rndPlayerbyPos(pList, pos);
+        currentPlayer = player;
+
+
         return resultObj;
     }
     simulateRound(time, apm, team) {
@@ -123,13 +192,17 @@ export class Simulator {
             //console.log("TIME: ", (ballPossess === 0 ? "HOME" : "AWAY"));
             const decision = this.decisionMethod(porcBase);
 
-            const result = this.coinToss(decision.porc);
-            //console.log("decision: ", decision, " - result: ", result);
-            if (!result) {
+            //const result = this.coinToss(decision.porc);
+            ////console.log("decision: ", decision, " - result: ", result);
+            //if (!result) {
+            //    ballPossess = ballPossess === 0 ? 1 : 0;
+            //}
+            const progress = this.progressMethod(decision);
+            //console.log("progress: ", progress);
+
+            if (!progress.result) {
                 ballPossess = ballPossess === 0 ? 1 : 0;
             }
-            const progress = this.progressMethod(result, decision);
-            //console.log("progress: ", progress);
             if (progress.goal) {
                 currentPos = 0;
 
@@ -150,11 +223,20 @@ export class Simulator {
                 goal: progress.goal,
                 teamPos: teamPos,
                 score: [scoreHome, scoreAway],
+                currentPlayer: currentPlayer,
+                prevPlayer: prevPlayer,
                 action: {
-                    acao: decision.acao, status: result
+                    acao: decision.acao, status: progress.result
                 }
             };
+            //if (round.action.acao === "chute" && round.action.status) {
+            //    console.log(round.time + "m - " + "GOOOOL do " + round.prevPlayer.nome + " do time " + (round.teamPos === 0 ? homeTeam.nome : awayTeam.nome) + " com um chute da posição " + round.initialPos + " fazendo o placar ficar: " + scoreHome + "-" + scoreAway);
+            //} else {
+            //    console.log(round.time + "m - " + round.prevPlayer.nome + " do time " + (round.teamPos === 0 ? homeTeam.nome : awayTeam.nome) + " tentou um " + round.action.acao + (round.action.status ? " com sucesso " : " sem sucesso ") + "e a bola foi para " + round.currentPlayer.nome + " saindo de " + round.initialPos + " para " + round.ballPos);
+            //}
+
             //console.log("round: ", round);
+            //console.log("------------------------");
             matchHistory.push(round);
         }
 
@@ -162,10 +244,15 @@ export class Simulator {
 
     simulate(home, away) {
 
-        let homeTeam = JSON.parse(JSON.stringify(home))
-        let awayTeam = JSON.parse(JSON.stringify(away))
+        homeTeam = JSON.parse(JSON.stringify(home))
+        awayTeam = JSON.parse(JSON.stringify(away))
         homeTeam.score = 0;
         awayTeam.score = 0;
+
+
+        const player = this.rndPlayerbyPos(homeTeam.jogadores.filter(p => p.titular), "a");
+        currentPlayer = player;
+        prevPlayer = player;
         for (let i = 0; i <= maxTime; i++) {
             const team = ballPossess === 0 ? homeTeam : awayTeam;
             this.simulateRound(i, apm, team);
@@ -174,8 +261,8 @@ export class Simulator {
 
         homeTeam.score = scoreHome;
         awayTeam.score = scoreAway;
-        let status = new Calculate().calculateGameStatus(matchHistory);
-        const obj = { score: [scoreHome, scoreAway], matchHistory: matchHistory, home: homeTeam, away: awayTeam }
+        let statistics = new Calculate().calculateGameStatus(matchHistory);
+        const obj = { score: [scoreHome, scoreAway], matchHistory: matchHistory, home: homeTeam, away: awayTeam, statistics: statistics }
 
         this.resetValues();
         return obj;
@@ -188,6 +275,7 @@ export class Simulator {
         ballPossess = 0;
     }
 }
+
 
 
 

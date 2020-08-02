@@ -1,7 +1,12 @@
 {
   "ExpandedNodes": [
-    "\\assets",
-    "\\src"
+    "",
+    "\\src",
+    "\\src\\static",
+    "\\src\\views",
+    "\\src\\views\\pages",
+    "\\src\\views\\pages\\menu"
   ],
+  "SelectedNode": "\\src\\views\\pages\\menu\\index.tsx",
   "PreviewInSolutionExplorer": false
 }
