@@ -1,5 +1,4 @@
 
-
 //GAME VARS
 const apm = 5;
 const maxTime = 90;
@@ -14,6 +13,7 @@ let matchHistory = [];
 let currentPos = 0;
 let prevPlayer = {};
 let currentPlayer = {};
+let currentCPlayer = {};
 let ballPossess = 0; //HOME = 0, AWAY = 1
 export class Calculate {
     teamStatus(jogadores) {
@@ -78,14 +78,20 @@ export class Simulator {
         return Math.random() < perc;
     }
     //METODO DE SORTEIO DE POSSIVEL POSIÇÃO PARA ONDE A BOLA IRÁ
-    getPossiblePos() {
+    getPossiblePos(contra) {
         let array = [];
-        const fator = ballPossess === 0 ? 1 : -1;
-        let basePos = currentPos * fator;
-        if (basePos === -7) {
-            array.push("g");
+        let fator = 0;
+        if (!contra)
+            fator = (ballPossess === 0) ? 1 : -1;
+        else {
+            fator = (ballPossess === 0) ? -1 : 1;
         }
-        if (basePos > -7 && basePos < -1) {
+
+
+        let basePos = currentPos * fator;
+        //console.log("basePos: ", basePos);
+        //console.log("ballPossess: ", ballPossess);
+        if (basePos >= -7 && basePos < -1) {
             array.push("d");
         }
         if (basePos > -3 && basePos < 5) {
@@ -105,6 +111,16 @@ export class Simulator {
             pList.splice(index, 1);
         }
         return pList[Math.floor(Math.random() * pList.length)];
+    }
+    progressRnd() {
+        const rnd = Math.random();
+        if (rnd < 0.1) {
+            return "falta"
+        } else if (rnd > 0.1 && rnd < 0.2) {
+            return 1
+        } else {
+            return 0;
+        }
     }
     decisionMethod(data) {
         let currentTeamPos = ballPossess === 0 ? currentPos : currentPos * -1;
@@ -135,52 +151,95 @@ export class Simulator {
         return resultObj;
     }
     progressMethod(decision) {
+        let pList = [];
+        let cList = [];
+        if (ballPossess === 0) {
+            pList = homeTeam.jogadores.filter(p => p.titular);
+            cList = awayTeam.jogadores.filter(p => p.titular);
+        } else {
+            cList = homeTeam.jogadores.filter(p => p.titular);
+            pList = awayTeam.jogadores.filter(p => p.titular);
+        }
+
+        let cPos = decision.acao === "chute" ? "g" : this.getPossiblePos(true);
+        currentCPlayer = this.rndPlayerbyPos(cList, cPos);
+        //console.log("TIME COM A BOLA: ", ballPossess);
+        //console.log("JOGADOR NA MARCACAO: ", currentCPlayer);
+
+        //COIN TOSS PARA O JOGADOR PELA AÇÃO
         const pSuccess = this.coinToss(currentPlayer[decision.acao] / 100);
+        //COIN TOSS PARA A AÇÃO
         const success = this.coinToss(decision.porc);
+        //COIN TOSS PARA O JOGADOR CONTRA A AÇÃO
+        const cpSuccess = this.coinToss(currentCPlayer.defesa / 100);
         //console.log("player: " + currentPlayer.nome + " " + decision.acao + " " + currentPlayer[decision.acao] + ": " + pSuccess);
         //console.log("decision: ", decision, " - result: ", success);
+        //console.log("marcação: ", currentCPlayer.nome, " - result: ", cpSuccess);
+
         const fator = ballPossess === 0 ? 1 : -1;
         let resultObj = {};
-
-
-
-
-        let pList = [];
-        let pos = this.getPossiblePos();
-
-
-        if (success && pSuccess) {
-            resultObj.pos = this.coinToss(1 / apm) ? 1 * fator : 0;
-
-
-            if ((ballPossess === 0 && decision.acao !== "chute") || (ballPossess === 1 && decision.acao === "chute")) {
-                pList = homeTeam.jogadores.filter(p => p.titular);
-            } else {
-                pList = awayTeam.jogadores.filter(p => p.titular);
-            }
-            if (decision.acao === "chute") {
-                pos = "a";
-            }
-
-        } else {
-            resultObj.pos = 0;
-
-
-            if (ballPossess === 0) {
-                pList = awayTeam.jogadores.filter(p => p.titular);
-            } else {
-                pList = homeTeam.jogadores.filter(p => p.titular);
-            }
-        }
-        resultObj.goal = decision.acao === "chute" && success;
-        resultObj.result = success;
-
-
+        resultObj.falta = false;
         prevPlayer = currentPlayer;
 
-        const player = this.rndPlayerbyPos(pList, pos);
-        currentPlayer = player;
 
+        //if (decision.acao === "chute") {
+        //    console.log("pSuccess: ", pSuccess);
+        //    console.log("success: ", success);
+        //    console.log("cpSuccess: ", cpSuccess);
+        //    console.log("---------------");
+        //}
+
+        if (pSuccess && success && !cpSuccess) {
+            //console.log("SUCESSO");
+            resultObj.pos = 1 * fator;
+            if (decision.acao === "chute") {
+                const player = this.rndPlayerbyPos(cList, "a");
+                currentPlayer = player;
+            } else if (decision.acao === "passe") {
+                let pos = this.getPossiblePos(false);
+                const player = this.rndPlayerbyPos(pList, pos);
+                currentPlayer = player;
+            }
+        } else if (pSuccess && success && cpSuccess) {
+            //console.log("FAIL MAS MANTEM POSSE");
+            const newprogress = this.progressRnd();
+            //console.log("newprogress: ", newprogress);
+            resultObj.pos = newprogress * fator;
+            if (decision.acao === "chute") {
+                currentPos = 7 * fator;
+            } else {
+
+                if (newprogress === "falta") {
+                    resultObj.pos = 0;
+                    resultObj.falta = true;
+                }
+            }
+
+
+            let pos = this.getPossiblePos(false);
+            //console.log("pList: ", pList);
+            //console.log("pos: ", pos);
+            const player = this.rndPlayerbyPos(pList, pos);
+            currentPlayer = player;
+
+        } else {
+            //console.log("FAIL");
+            resultObj.pos = 0;
+            if (decision.acao === "chute") {
+                let cPos = this.getPossiblePos(true);
+                //console.log("cPos: ", cPos);
+                currentPlayer = this.rndPlayerbyPos(cList, cPos);
+            } else {
+                currentPlayer = currentCPlayer;
+            }
+            ballPossess = ballPossess === 0 ? 1 : 0;
+        }
+        resultObj.goal = decision.acao === "chute" && pSuccess && success && !cpSuccess;
+        resultObj.result = pSuccess && success && !cpSuccess;
+
+
+
+        //console.log("resultObj: ", resultObj);
 
         return resultObj;
     }
@@ -190,6 +249,7 @@ export class Simulator {
             const teamPos = ballPossess;
             let porcBase = team.data;
             //console.log("TIME: ", (ballPossess === 0 ? "HOME" : "AWAY"));
+            //console.log("initialPos: ", initialPos);
             const decision = this.decisionMethod(porcBase);
 
             //const result = this.coinToss(decision.porc);
@@ -200,9 +260,6 @@ export class Simulator {
             const progress = this.progressMethod(decision);
             //console.log("progress: ", progress);
 
-            if (!progress.result) {
-                ballPossess = ballPossess === 0 ? 1 : 0;
-            }
             if (progress.goal) {
                 currentPos = 0;
 
@@ -216,6 +273,8 @@ export class Simulator {
                 if ((currentPos < maxPos && ballPossess === 0) || (currentPos > maxPos * -1 && ballPossess === 1))
                     currentPos += progress.pos;
             }
+
+            //console.log("currentPos: ", currentPos);
             const round = {
                 time: time,
                 initialPos: initialPos,
@@ -275,7 +334,3 @@ export class Simulator {
         ballPossess = 0;
     }
 }
-
-
-
-
