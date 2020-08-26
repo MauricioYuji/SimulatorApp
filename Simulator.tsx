@@ -216,6 +216,7 @@ export class Simulator {
         resultObj.falta = false;
         resultObj.yCard = "";
         resultObj.rCard = "";
+        resultObj.keyMoment = false;
         currentPlayer = newPlayer;
 
         if (pSuccess && success && !cpSuccess) {
@@ -223,6 +224,7 @@ export class Simulator {
             //console.log("SUCESSO");
             resultObj.pos = 1 * fator;
             if (decision.acao === "chute") {
+                resultObj.keyMoment = true;
                 const player = this.rndPlayerbyPos(cList, "a");
                 newPlayer = player;
             } else if (decision.acao === "passe") {
@@ -237,6 +239,7 @@ export class Simulator {
             //console.log("newprogress: ", newprogress);
             resultObj.pos = newprogress * fator;
             if (decision.acao === "chute") {
+                resultObj.keyMoment = true;
                 //currentPos = 7 * fator; //VAI PARA A MÃO DO GOLEIRO
                 currentPos = 0; //GOLEIRO CHUTA PARA O MEIO DE CAMPO
 
@@ -255,6 +258,7 @@ export class Simulator {
             } else {
 
                 if (newprogress === "falta") {
+                    resultObj.keyMoment = true;
                     resultObj.pos = 0;
                     resultObj.falta = true;
                     faultP.push(currentCPlayer.id);
@@ -287,6 +291,7 @@ export class Simulator {
             //console.log("FAIL");
             resultObj.pos = 0;
             if (decision.acao === "chute") {
+                resultObj.keyMoment = true;
                 let cPos = this.getPossiblePos(true);
                 //console.log("cPos: ", cPos);
                 newPlayer = this.rndPlayerbyPos(cList, cPos);
@@ -336,6 +341,7 @@ export class Simulator {
                 falta: progress.falta,
                 yCard: progress.yCard,
                 rCard: progress.rCard,
+                keyMoment: progress.keyMoment,
                 score: [scoreHome, scoreAway],
                 newPlayer: newPlayer,
                 currentCPlayer: currentCPlayer,

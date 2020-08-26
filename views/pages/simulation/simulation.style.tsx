@@ -20,6 +20,7 @@ export default StyleSheet.create({
         position: "absolute",
         left: 0,
         top: 0,
+        zIndex: 10
     },
     btnBack: {
         fontFamily: 'SourceSansProRegular',
@@ -139,6 +140,25 @@ export default StyleSheet.create({
         fontSize: 20,
         fontFamily: 'SourceSansProSemiBold',
         color: "#FFF"
+    },
+    gameScore: {
+        flex: 1,
+        alignSelf: "center",
+        justifyContent: "center",
+        textAlign: "center",
+        alignItems: "center",
+    },
+    scoreText: {
+        fontSize: 20,
+        fontFamily: 'SourceSansProSemiBold',
+        color: "#FFF"
+    },
+    historyBox: {
+        backgroundColor: "#F00",
+        flex: 3
+    },
+    historyText: {
+        margin: 10
     }
 });
 

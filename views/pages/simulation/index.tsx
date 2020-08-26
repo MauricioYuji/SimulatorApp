@@ -13,6 +13,7 @@ export default class Simulation extends Component {
             homeIndex: 0,
             awayIndex: 0,
             times: [],
+            simulation: null
         }
     }
 
@@ -58,6 +59,10 @@ export default class Simulation extends Component {
         const { homeIndex, awayIndex, times } = this.state;
         const simulatedGame = new Simulator().simulate(times[homeIndex], times[awayIndex]);
         console.log("simulatedGame: ", simulatedGame);
+        this.setState({
+            simulation: simulatedGame
+        }, () => {
+        });
     }
     renderTeamStatus(id) {
         const { times } = this.state;
@@ -74,58 +79,111 @@ export default class Simulation extends Component {
             );
         }
     }
+    resetSimulation() {
+        this.setState({
+            simulation: null
+        }, () => {
+        });
+    }
+    renderScore() {
+        const { simulation } = this.state;
+
+        if (simulation != null) {
+            return (
+                <Text style={styles.scoreText}>{JSON.stringify(simulation.score)}</Text>
+            );
+        } else {
+            return null;
+        }
+    }
+    renderHistory() {
+        const { simulation } = this.state;
+        console.log("simulation: ", simulation);
+        if (simulation != null) {
+            let items = [];
+            for (let i = 0; i < simulation.matchHistory.length; i++) {
+                if (simulation.matchHistory[i].keyMoment) {
+                    items.push(<Text style={styles.historyText}>{JSON.stringify(simulation.matchHistory[i])}</Text>);
+                }
+            }
+            console.log("items: ", items);
+            return items;
+        } else {
+            return null;
+        }
+    }
     render() {
-        const { homeIndex, awayIndex } = this.state;
-        return (
-            <View style={styles.container}>
-                <View style={styles.selecaoTituloBox}>
+        const { homeIndex, awayIndex, simulation } = this.state;
+        if (simulation === null) {
+            return (
+                <View style={styles.container}>
+                    <View style={styles.selecaoTituloBox}>
+                        <View style={styles.btnBackBox}>
+                            <TouchableOpacity onPress={() => { this.goBack() }}>
+                                <Text style={styles.btnBack}>Voltar</Text>
+                            </TouchableOpacity>
+                        </View>
+                        <Text style={styles.selecaoTitulo}>Selecione os times</Text>
+                    </View>
+                    <View style={styles.timesSelecionados}>
+                        <View style={styles.timeBox}>
+                            <Text style={styles.timeTitle}>Casa</Text>
+                            <View style={styles.timeSelected}>
+                                <Carousel
+                                    loop={true}
+                                    ref={ref => this.carousel = ref}
+                                    data={this.state.times}
+                                    renderItem={this._renderItem}
+                                    sliderWidth={148}
+                                    itemWidth={90}
+                                    onSnapToItem={index => this.setState({ homeIndex: index })} />
+                            </View>
+                            {this.renderTeamStatus(homeIndex)}
+                        </View>
+                        <View style={styles.timeDividerBox}>
+                            <View style={styles.timeDivider}></View>
+                        </View>
+                        <View style={styles.timeBox}>
+                            <Text style={styles.timeTitle}>Fora</Text>
+                            <View style={styles.timeSelected}>
+                                <Carousel
+                                    loop={true}
+                                    ref={ref => this.carousel = ref}
+                                    data={this.state.times}
+                                    renderItem={this._renderItem}
+                                    sliderWidth={148}
+                                    itemWidth={90}
+                                    onSnapToItem={index => this.setState({ awayIndex: index })} />
+                            </View>
+                            {this.renderTeamStatus(awayIndex)}
+                        </View>
+                    </View>
+                    <View style={styles.actionBox}>
+                        <TouchableOpacity onPress={() => { this.startGame() }}>
+                            <Text style={styles.actionBtn}>Simular uma partida</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            );
+        } else {
+            return (
+                <View style={styles.container}>
                     <View style={styles.btnBackBox}>
-                        <TouchableOpacity onPress={() => { this.goBack() }}>
+                        <TouchableOpacity onPress={() => { this.resetSimulation() }}>
                             <Text style={styles.btnBack}>Voltar</Text>
                         </TouchableOpacity>
                     </View>
-                    <Text style={styles.selecaoTitulo}>Selecione os times</Text>
-                </View>
-                <View style={styles.timesSelecionados}>
-                    <View style={styles.timeBox}>
-                        <Text style={styles.timeTitle}>Casa</Text>
-                        <View style={styles.timeSelected}>
-                            <Carousel
-                                loop={true}
-                                ref={ref => this.carousel = ref}
-                                data={this.state.times}
-                                renderItem={this._renderItem}
-                                sliderWidth={148}
-                                itemWidth={90}
-                                onSnapToItem={index => this.setState({ homeIndex: index })} />
-                        </View>
-                        {this.renderTeamStatus(homeIndex)}
+                    <View style={styles.gameScore}>
+                        {this.renderScore()}
                     </View>
-                    <View style={styles.timeDividerBox}>
-                        <View style={styles.timeDivider}></View>
-                    </View>
-                    <View style={styles.timeBox}>
-                        <Text style={styles.timeTitle}>Fora</Text>
-                        <View style={styles.timeSelected}>
-                            <Carousel
-                                loop={true}
-                                ref={ref => this.carousel = ref}
-                                data={this.state.times}
-                                renderItem={this._renderItem}
-                                sliderWidth={148}
-                                itemWidth={90}
-                                onSnapToItem={index => this.setState({ awayIndex: index })} />
-                        </View>
-                        {this.renderTeamStatus(awayIndex)}
+                    <View style={styles.historyBox}>
+                        <ScrollView>
+                            {this.renderHistory()}
+                        </ScrollView>
                     </View>
                 </View>
-                <View style={styles.actionBox}>
-                    <TouchableOpacity onPress={() => { this.startGame() }}>
-                        <Text style={styles.actionBtn}>Simular uma partida</Text>
-                    </TouchableOpacity>
-                </View>
-            </View>
-        );
+            );
+        }
     }
 }
 
